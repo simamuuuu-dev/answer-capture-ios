@@ -83,7 +83,7 @@ public actor ImageProcessor {
         // the iOS 26 SDK. Keep the public quality parameter for call-site
         // compatibility and use Core Image's default JPEG quality here.
         _ = quality
-        context.jpegRepresentation(
+        return context.jpegRepresentation(
             of: image,
             colorSpace: colorSpace,
             options: [:]
