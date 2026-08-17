@@ -199,16 +199,42 @@ private final class CaptureSessionRunner: @unchecked Sendable {
     }
 }
 
-@preconcurrency extension StableCaptureController: AVCapturePhotoCaptureDelegate {
-    public func photoOutput(
+extension StableCaptureController: AVCapturePhotoCaptureDelegate {
+    nonisolated public func photoOutput(
         _ output: AVCapturePhotoOutput,
         didFinishProcessingPhoto photo: AVCapturePhoto,
         error: Error?
     ) {
-        defer { continuation = nil }
-        if let error { continuation?.resume(throwing: error) }
-        else if let data = photo.fileDataRepresentation() { continuation?.resume(returning: data) }
-        else { continuation?.resume(throwing: CameraError.noPhotoData) }
+        if let error {
+            let description = error.localizedDescription
+            Task { @MainActor [weak self] in
+                self?.finishCapture(error: NSError(
+                    domain: "AnswerCapture.Camera",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: description]
+                ))
+            }
+        } else if let data = photo.fileDataRepresentation() {
+            Task { @MainActor [weak self] in
+                self?.finishCapture(data: data)
+            }
+        } else {
+            Task { @MainActor [weak self] in
+                self?.finishCapture(error: CameraError.noPhotoData)
+            }
+        }
+    }
+
+    private func finishCapture(data: Data) {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(returning: data)
+    }
+
+    private func finishCapture(error: Error) {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(throwing: error)
     }
 }
 
