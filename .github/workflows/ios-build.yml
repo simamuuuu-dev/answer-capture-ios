@@ -75,7 +75,11 @@ jobs:
             tail -n 200 "$log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          message=$(tail -n 100 "$log" | tr '\r\n' '  ')
+          diagnostics="$(grep -E 'error:|fatal error:|BUILD FAILED|Command .* failed|failed with exit code' "$log" | tail -n 80 || true)"
+          if [[ -z "$diagnostics" ]]; then
+            diagnostics="$(tail -n 100 "$log")"
+          fi
+          message=$(printf '%s\n' "$diagnostics" | tr '\r\n' '  ')
           message=${message//'%'/'%25'}
           message=${message//$'\r'/'%0D'}
           message=${message//$'\n'/'%0A'}
