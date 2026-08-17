@@ -75,14 +75,11 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           while IFS= read -r line; do
-            case "$line" in
-              *error:*|*fatal\ error:*|*SwiftCompile*|*BUILD\ FAILED*|*No\ such\ module*)
-                line=${line//'%'/'%25'}
-                line=${line//$'\r'/}
-                line=${line//$'\n'/}
-                echo "::error::${line}"
-                ;;
-            esac
+            [[ -n "$line" ]] || continue
+            line=${line//'%'/'%25'}
+            line=${line//$'\r'/}
+            line=${line//$'\n'/}
+            echo "::error title=xcodebuild::${line}"
           done < "$log"
 
       - name: Archive unsigned app
