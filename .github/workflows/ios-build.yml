@@ -25,11 +25,14 @@ jobs:
         run: |
           set -euo pipefail
           selected=""
+          selected_sdk=""
           for candidate in /Applications/Xcode_*.app /Applications/Xcode.app; do
             [[ -x "$candidate/Contents/Developer/usr/bin/xcodebuild" ]] || continue
             sdk_list="$("$candidate/Contents/Developer/usr/bin/xcodebuild" -showsdks 2>/dev/null || true)"
-            if [[ "$sdk_list" == *iphoneos26* ]]; then
+            sdk_path="$(DEVELOPER_DIR="$candidate/Contents/Developer" xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
+            if [[ "$sdk_list" == *iphoneos26* && "$sdk_path" == *iPhoneOS26* && -d "$sdk_path" ]]; then
               selected="$candidate"
+              selected_sdk="$sdk_path"
               break
             fi
           done
@@ -41,6 +44,10 @@ jobs:
           sudo xcode-select --switch "$selected/Contents/Developer"
           xcodebuild -version
           xcodebuild -showsdks | grep -E 'iphoneos26|iphonesimulator26'
+          {
+            echo "Selected Xcode: $selected"
+            echo "iPhoneOS SDK: $selected_sdk"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build unsigned iOS app
         id: build
