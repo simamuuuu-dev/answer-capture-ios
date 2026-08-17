@@ -49,6 +49,28 @@ jobs:
             echo "iPhoneOS SDK: $selected_sdk"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Ensure generic iOS destination
+        shell: bash
+        run: |
+          set -euo pipefail
+          destinations="$(xcodebuild \
+            -project AnswerCapture.xcodeproj \
+            -scheme AnswerCapture \
+            -showdestinations 2>&1 || true)"
+          if ! printf '%s\n' "$destinations" | grep -E 'platform:iOS,' | grep -v 'error:' >/dev/null; then
+            xcodebuild -downloadPlatform iOS
+            destinations="$(xcodebuild \
+              -project AnswerCapture.xcodeproj \
+              -scheme AnswerCapture \
+              -showdestinations 2>&1 || true)"
+          fi
+          if ! printf '%s\n' "$destinations" | grep -E 'platform:iOS,' | grep -v 'error:' >/dev/null; then
+            echo 'No usable generic iOS destination is available after platform setup.' >&2
+            printf '%s\n' "$destinations" >&2
+            exit 1
+          fi
+          echo 'A generic iOS destination is available.' >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build unsigned iOS app
         id: build
         run: |
@@ -58,6 +80,7 @@ jobs:
             -scheme AnswerCapture \
             -configuration Release \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -destination 'generic/platform=iOS' \
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
