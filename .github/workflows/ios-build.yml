@@ -57,7 +57,7 @@ jobs:
             -project AnswerCapture.xcodeproj \
             -scheme AnswerCapture \
             -configuration Release \
-            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
@@ -101,7 +101,7 @@ jobs:
             -project AnswerCapture.xcodeproj \
             -scheme AnswerCapture \
             -configuration Release \
-            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -archivePath "$archive" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
