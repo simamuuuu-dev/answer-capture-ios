@@ -61,6 +61,30 @@ jobs:
           if-no-files-found: warn
           path: ${{ runner.temp }}/xcodebuild.log
 
+      - name: Publish xcodebuild diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          log="$RUNNER_TEMP/xcodebuild.log"
+          [[ -f "$log" ]] || exit 0
+          {
+            echo '## xcodebuild diagnostics'
+            echo '```text'
+            tail -n 200 "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS= read -r line; do
+            case "$line" in
+              *error:*|*fatal\ error:*|*SwiftCompile*|*BUILD\ FAILED*|*No\ such\ module*)
+                line=${line//'%'/'%25'}
+                line=${line//$'\r'/}
+                line=${line//$'\n'/}
+                echo "::error::${line}"
+                ;;
+            esac
+          done < "$log"
+
       - name: Archive unsigned app
         run: |
           set -euo pipefail
