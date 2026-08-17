@@ -1,0 +1,83 @@
+name: iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # The runner must contain an Xcode installation with the iOS 26 SDK.
+    # The step below checks this explicitly instead of silently building with
+    # an older SDK.
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode with iOS 26 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          selected=""
+          for candidate in /Applications/Xcode_*.app /Applications/Xcode.app; do
+            [[ -x "$candidate/Contents/Developer/usr/bin/xcodebuild" ]] || continue
+            if "$candidate/Contents/Developer/usr/bin/xcodebuild" -showsdks 2>/dev/null | grep -q 'iphoneos26'; then
+              selected="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$selected" ]]; then
+            echo 'No installed Xcode with iphoneos26 SDK was found on this runner.' >&2
+            echo 'Use a runner image that provides Xcode 26 / the iOS 26 SDK.' >&2
+            exit 1
+          fi
+          sudo xcode-select --switch "$selected/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -E 'iphoneos26|iphonesimulator26'
+
+      - name: Build unsigned iOS app
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AnswerCapture.xcodeproj \
+            -scheme AnswerCapture \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee "$RUNNER_TEMP/xcodebuild.log"
+
+      - name: Archive unsigned app
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/AnswerCapture.xcarchive"
+          xcodebuild \
+            -project AnswerCapture.xcodeproj \
+            -scheme AnswerCapture \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$archive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+          app="$archive/Products/Applications/AnswerCapture.app"
+          test -d "$app"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$app" "$RUNNER_TEMP/Payload/AnswerCapture.app"
+          (cd "$RUNNER_TEMP" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/AnswerCapture-unsigned.ipa" Payload)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnswerCapture-iOS-unsigned
+          if-no-files-found: error
+          path: |
+            AnswerCapture-unsigned.ipa
+            ${{ runner.temp }}/xcodebuild.log

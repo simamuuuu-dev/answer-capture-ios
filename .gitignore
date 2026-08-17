@@ -1,0 +1,21 @@
+# Xcode / Swift Package Manager
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+
+# Signing and local secrets
+*.mobileprovision
+*.p12
+*.cer
+*.p8
+*.ipa
+*.xcarchive/
+.env
+.env.*
+
+# Local diagnostics and generated artifacts
+*.log
+build/
+Payload/
