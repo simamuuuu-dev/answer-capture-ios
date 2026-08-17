@@ -57,6 +57,7 @@ jobs:
             -project AnswerCapture.xcodeproj \
             -scheme AnswerCapture \
             -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -93,57 +94,14 @@ jobs:
           message=${message//$'\n'/'%0A'}
           echo "::error title=xcodebuild::${message}"
 
-      - name: Archive unsigned app
-        id: archive
+      - name: Package unsigned app
         run: |
           set -euo pipefail
-          archive="$RUNNER_TEMP/AnswerCapture.xcarchive"
-          xcodebuild \
-            -project AnswerCapture.xcodeproj \
-            -scheme AnswerCapture \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath "$archive" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            archive 2>&1 | tee "$RUNNER_TEMP/xcodearchive.log"
-
-          app="$archive/Products/Applications/AnswerCapture.app"
+          app="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/AnswerCapture.app"
           test -d "$app"
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$app" "$RUNNER_TEMP/Payload/AnswerCapture.app"
           (cd "$RUNNER_TEMP" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/AnswerCapture-unsigned.ipa" Payload)
-
-      - name: Upload xcode archive log
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: xcodearchive-log
-          if-no-files-found: warn
-          path: ${{ runner.temp }}/xcodearchive.log
-
-      - name: Publish xcodearchive diagnostics
-        if: ${{ always() && steps.archive.outcome == 'failure' }}
-        shell: bash
-        run: |
-          set -u
-          log="$RUNNER_TEMP/xcodearchive.log"
-          [[ -f "$log" ]] || exit 0
-          {
-            echo '## xcodearchive diagnostics'
-            echo '```text'
-            tail -n 200 "$log"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          diagnostics="$(grep -E 'error:|fatal error:|BUILD FAILED|Command .* failed|failed with exit code' "$log" | tail -n 80 || true)"
-          if [[ -z "$diagnostics" ]]; then
-            diagnostics="$(tail -n 100 "$log")"
-          fi
-          message=$(printf '%s\n' "$diagnostics" | tr '\r\n' '  ')
-          message=${message//'%'/'%25'}
-          message=${message//$'\r'/'%0D'}
-          message=${message//$'\n'/'%0A'}
-          echo "::error title=xcodearchive::${message}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
