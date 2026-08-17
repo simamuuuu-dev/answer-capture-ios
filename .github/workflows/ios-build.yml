@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload xcodebuild log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: xcodebuild-log
           if-no-files-found: warn
@@ -106,7 +106,7 @@ jobs:
           (cd "$RUNNER_TEMP" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/AnswerCapture-unsigned.ipa" Payload)
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: AnswerCapture-iOS-unsigned
           if-no-files-found: error
