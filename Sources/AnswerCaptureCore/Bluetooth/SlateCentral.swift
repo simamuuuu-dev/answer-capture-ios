@@ -4,9 +4,11 @@ import CoreBluetooth
 /// Core Bluetooth integration boundary. Transport callbacks feed this actor; BLE objects and
 /// peripheral identifiers are intentionally kept outside the protocol model (no MAC dependency).
 public actor SlateCentral {
-    public static let knownServiceUUIDs: [CBUUID] = [
-        CBUUID(nsuuid: PenzUUIDs.liveService), CBUUID(nsuuid: PenzUUIDs.dfuService),
-        CBUUID(nsuuid: PenzUUIDs.fileTransferService), CBUUID(nsuuid: PenzUUIDs.systemEventService)
+    public static let knownServiceUUIDs: [UUID] = [
+        PenzUUIDs.liveService,
+        PenzUUIDs.dfuService,
+        PenzUUIDs.fileTransferService,
+        PenzUUIDs.systemEventService
     ]
     public enum State: Equatable, Sendable { case idle, scanning, connecting, discovering, authenticating, live, downloading, readyToDelete, failed(String) }
     public private(set) var state: State = .idle

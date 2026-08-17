@@ -68,8 +68,8 @@ public actor ImageProcessor {
         guard CropValidator.isValid(rect) else { throw ImageProcessingError.invalidCrop }
         let extent = image.extent
         let crop = CGRect(
-            x: extent.minX + rect.x * extent.width,
-            y: extent.minY + (1 - rect.y - rect.height) * extent.height,
+            x: extent.minX + rect.minX * extent.width,
+            y: extent.minY + (1 - rect.minY - rect.height) * extent.height,
             width: rect.width * extent.width,
             height: rect.height * extent.height
         )
@@ -79,10 +79,14 @@ public actor ImageProcessor {
     }
 
     public func jpegData(_ image: CIImage, quality: CGFloat = 0.92) -> Data? {
+        // CIImageRepresentationOption.lossyCompressionQuality is not exposed by
+        // the iOS 26 SDK. Keep the public quality parameter for call-site
+        // compatibility and use Core Image's default JPEG quality here.
+        _ = quality
         context.jpegRepresentation(
             of: image,
             colorSpace: colorSpace,
-            options: [.lossyCompressionQuality: quality]
+            options: [:]
         )
     }
 

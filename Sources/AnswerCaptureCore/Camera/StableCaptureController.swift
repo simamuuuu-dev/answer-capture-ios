@@ -199,7 +199,7 @@ private final class CaptureSessionRunner: @unchecked Sendable {
     }
 }
 
-extension StableCaptureController: AVCapturePhotoCaptureDelegate {
+@preconcurrency extension StableCaptureController: AVCapturePhotoCaptureDelegate {
     public func photoOutput(
         _ output: AVCapturePhotoOutput,
         didFinishProcessingPhoto photo: AVCapturePhoto,
