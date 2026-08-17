@@ -52,7 +52,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            build | tee "$RUNNER_TEMP/xcodebuild.log"
+            build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
 
       - name: Upload xcodebuild log
         if: always()
