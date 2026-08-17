@@ -43,6 +43,7 @@ jobs:
           xcodebuild -showsdks | grep -E 'iphoneos26|iphonesimulator26'
 
       - name: Build unsigned iOS app
+        id: build
         run: |
           set -o pipefail
           xcodebuild \
@@ -63,7 +64,7 @@ jobs:
           path: ${{ runner.temp }}/xcodebuild.log
 
       - name: Publish xcodebuild diagnostics
-        if: always()
+        if: ${{ always() && steps.build.outcome == 'failure' }}
         shell: bash
         run: |
           set -u
