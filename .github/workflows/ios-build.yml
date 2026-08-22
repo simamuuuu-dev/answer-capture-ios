@@ -26,7 +26,10 @@ jobs:
           set -euo pipefail
           selected=""
           selected_sdk=""
-          for candidate in /Applications/Xcode_*.app /Applications/Xcode.app; do
+          # Prefer the image's default/latest Xcode. Older Xcode bundles can
+          # expose an iphoneos26 SDK path while their iOS platform payload is
+          # not installed, which produces a misleading generic destination.
+          for candidate in /Applications/Xcode.app /Applications/Xcode_*.app; do
             [[ -x "$candidate/Contents/Developer/usr/bin/xcodebuild" ]] || continue
             sdk_list="$("$candidate/Contents/Developer/usr/bin/xcodebuild" -showsdks 2>/dev/null || true)"
             sdk_path="$(DEVELOPER_DIR="$candidate/Contents/Developer" xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
@@ -53,10 +56,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # GitHub's macOS image can contain Xcode 26 while the iOS
-          # platform payload is not installed yet. Install/verify it before
-          # relying on the placeholder destination reported by xcodebuild.
-          xcodebuild -downloadPlatform iOS
           sdk_version="$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true)"
           if [[ "$sdk_version" != 26.* ]]; then
             echo "Expected iOS 26 SDK, found: ${sdk_version:-<none>}" >&2
@@ -66,7 +65,8 @@ jobs:
             -project AnswerCapture.xcodeproj \
             -scheme AnswerCapture \
             -showdestinations 2>&1 || true)"
-          if ! printf '%s\n' "$destinations" | grep -E 'platform:iOS,' | grep -v 'error:' >/dev/null; then
+          if printf '%s\n' "$destinations" | grep -E 'error:.*(not installed|not available)' >/dev/null \
+              || ! printf '%s\n' "$destinations" | grep -E 'platform:iOS,' | grep -v 'error:' >/dev/null; then
             xcodebuild -downloadPlatform iOS
             destinations="$(xcodebuild \
               -project AnswerCapture.xcodeproj \
