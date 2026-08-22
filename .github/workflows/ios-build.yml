@@ -53,6 +53,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # GitHub's macOS image can contain Xcode 26 while the iOS
+          # platform payload is not installed yet. Install/verify it before
+          # relying on the placeholder destination reported by xcodebuild.
+          xcodebuild -downloadPlatform iOS
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true)"
+          if [[ "$sdk_version" != 26.* ]]; then
+            echo "Expected iOS 26 SDK, found: ${sdk_version:-<none>}" >&2
+            exit 1
+          fi
           destinations="$(xcodebuild \
             -project AnswerCapture.xcodeproj \
             -scheme AnswerCapture \
