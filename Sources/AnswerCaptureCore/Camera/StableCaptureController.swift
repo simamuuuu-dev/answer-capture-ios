@@ -63,6 +63,13 @@ public final class StableCaptureController: NSObject, ObservableObject {
         }
         session.addInput(input)
         session.addOutput(output)
+        // The app is operated in portrait mode. Set the photo connection's
+        // orientation explicitly so AVCapturePhoto embeds the corresponding
+        // EXIF orientation instead of relying on the device's current
+        // interface orientation.
+        for connection in output.connections where connection.isVideoOrientationSupported {
+            connection.videoOrientation = .portrait
+        }
         output.maxPhotoQualityPrioritization = .quality
         if camera.isSmoothAutoFocusSupported {
             try camera.lockForConfiguration()

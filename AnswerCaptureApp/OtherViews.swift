@@ -181,27 +181,41 @@ struct RemoteWaitingView: View {
     @State private var lastCommunication: Date?
     @State private var zoom = 1.0
     @State private var waitingTask: Task<Void, Never>?
+    @State private var screenWakeUntil: Date?
+    @State private var screenWakeTask: Task<Void, Never>?
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 16) {
-            CameraPreview(session: camera.session)
-                .frame(height: 360)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-            Text(status).font(.title2.monospaced().bold())
-            Text("最終受信seq: \(lastSeq)")
-            Text("requestId: \(lastRequestID)")
-            Text("最終通信: \(lastCommunication?.formatted() ?? "—")")
-            Slider(value: $zoom, in: 1 ... 5, step: 0.1)
-                .onChange(of: zoom) { _, value in camera.setZoom(value) }
-            Text("ズーム: \(zoom, specifier: "%.1f")x")
-            Button(waitingTask == nil ? "待機開始" : "待機終了") {
-                waitingTask == nil ? start() : stop()
+        ZStack {
+            VStack(spacing: 16) {
+                CameraPreview(session: camera.session)
+                    .frame(height: 360)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                Text(status).font(.title2.monospaced().bold())
+                Text("最終受信seq: \(lastSeq)")
+                Text("requestId: \(lastRequestID)")
+                Text("最終通信: \(lastCommunication?.formatted() ?? "—")")
+                Slider(value: $zoom, in: 1 ... 5, step: 0.1)
+                    .onChange(of: zoom) { _, value in camera.setZoom(value) }
+                Text("ズーム: \(zoom, specifier: "%.1f")x")
+                Button(waitingTask == nil ? "待機開始" : "待機終了") {
+                    waitingTask == nil ? start() : stop()
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
+            .padding()
+
+            if waitingTask != nil && !isScreenAwake {
+                Color.black
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { revealScreenForOneMinute() }
+                    .accessibilityLabel("画面を1分間表示")
+            }
         }
-        .padding()
         .navigationTitle("遠隔撮影待機")
+        .toolbar(waitingTask == nil ? .automatic : .hidden, for: .navigationBar)
+        .statusBarHidden(waitingTask != nil)
         .onDisappear { stop() }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { stop() }
@@ -226,9 +240,36 @@ struct RemoteWaitingView: View {
     private func stop() {
         waitingTask?.cancel()
         waitingTask = nil
+        cancelScreenWakeTimer()
         camera.stop()
         UIApplication.shared.isIdleTimerDisabled = false
         status = "OFFLINE"
+    }
+
+    private var isScreenAwake: Bool {
+        guard let screenWakeUntil else { return false }
+        return screenWakeUntil > Date()
+    }
+
+    private func revealScreenForOneMinute() {
+        screenWakeTask?.cancel()
+        screenWakeUntil = Date().addingTimeInterval(60)
+        screenWakeTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(60))
+                guard !Task.isCancelled else { return }
+                screenWakeUntil = nil
+                screenWakeTask = nil
+            } catch {
+                // Cancellation is expected when waiting stops or the view disappears.
+            }
+        }
+    }
+
+    private func cancelScreenWakeTimer() {
+        screenWakeTask?.cancel()
+        screenWakeTask = nil
+        screenWakeUntil = nil
     }
 
     private func runLoop() async {
@@ -308,6 +349,7 @@ struct RemoteWaitingView: View {
             status = "ERROR"
             errorMessage = error.localizedDescription
         }
+        cancelScreenWakeTimer()
         waitingTask = nil
         UIApplication.shared.isIdleTimerDisabled = false
     }

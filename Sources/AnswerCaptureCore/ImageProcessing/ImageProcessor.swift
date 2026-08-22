@@ -16,7 +16,8 @@ public actor ImageProcessor {
     public init() {}
 
     public func process(_ jpeg: Data) throws -> RectangleDetectionResult {
-        guard let image = CIImage(data: jpeg, options: [.applyOrientationProperty: true]) else {
+        guard let source = CIImage(data: jpeg, options: [.applyOrientationProperty: true]),
+              let image = normalizedImage(source) else {
             throw ImageProcessingError.invalidImage
         }
         return detectAndCorrect(image)
@@ -88,6 +89,16 @@ public actor ImageProcessor {
             colorSpace: colorSpace,
             options: [:]
         )
+    }
+
+    /// Render the already-oriented CIImage once so the resulting image has
+    /// upright pixels and no orientation metadata to be interpreted later.
+    /// This matters for consumers that read the returned JPEG as raw pixels.
+    private func normalizedImage(_ image: CIImage) -> CIImage? {
+        guard let rendered = context.createCGImage(image, from: image.extent) else {
+            return nil
+        }
+        return CIImage(cgImage: rendered)
     }
 
     private func enhance(_ image: CIImage) -> CIImage {
